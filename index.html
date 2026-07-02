@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>Woordendomino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  :root{
+    --cream:#FFF8EE;
+    --ink:#312A2B;
+    --p1:#EF5B5B;
+    --p1-soft:#FBD8D3;
+    --p2:#2E86AB;
+    --p2-soft:#CFE8F3;
+    --gold:#F6C90E;
+    --tile:#FFFDF7;
+    --shadow: 0 6px 0 rgba(49,42,43,0.12);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background: radial-gradient(circle at 15% -5%, #FFF0CE 0%, var(--cream) 55%, #FDE9E9 100%);
+    font-family:'Nunito', sans-serif;
+    color: var(--ink);
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding: 18px 14px 30px;
+  }
+  h1,h2,.display{ font-family:'Fredoka', sans-serif; }
+  .screen{ width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .hidden{ display:none !important; }
+
+  .logo{ display:flex; flex-direction:column; align-items:center; gap:2px; margin-top:6px; }
+  .logo .title{
+    font-family:'Fredoka', sans-serif; font-weight:700; font-size: 2.15rem;
+    background: linear-gradient(95deg, var(--p1), var(--gold) 55%, var(--p2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .logo .sub{ font-size:0.92rem; color:#8b8189; font-weight:600; text-align:center; }
+
+  .card{
+    background:var(--tile); border-radius:20px; padding:18px; width:100%;
+    box-shadow: var(--shadow); border: 2px solid rgba(49,42,43,0.06);
+  }
+
+  button{
+    font-family:'Fredoka', sans-serif; font-weight:600; font-size:1.02rem;
+    border:none; border-radius:15px; padding:13px 16px; cursor:pointer; color:white;
+    width:100%; transition: transform .08s ease;
+  }
+  button:active{ transform: translateY(2px); }
+  button:disabled{ opacity:0.45; }
+  .btn-primary{ background: var(--p1); box-shadow: 0 4px 0 #B93D3D;}
+  .btn-secondary{ background: var(--p2); box-shadow: 0 4px 0 #1F5F79;}
+  .btn-reject{ background:#8b8189; box-shadow: 0 4px 0 #63595f;}
+  .btn-ghost{ background:transparent; color:var(--ink); box-shadow:none; text-decoration:underline; font-size:0.88rem; padding:6px; width:auto;}
+
+  input[type=text]{
+    font-family:'Fredoka', sans-serif; font-size:1.3rem; text-align:center;
+    width:100%; padding:12px; border-radius:14px; border:2px solid #EAE0D2;
+    margin-bottom:10px; background:#FFFDF9;
+  }
+  input:focus{ outline:2px solid var(--p2); }
+  .code-input{ letter-spacing:5px; text-transform:uppercase; }
+
+  .rule-list{ font-size:0.87rem; line-height:1.55; color:#5b525a; }
+  .rule-list b{ color:var(--ink); }
+
+  .code-display{
+    font-family:'Fredoka', sans-serif; font-size:2.5rem; letter-spacing:7px;
+    text-align:center; color: var(--p1); margin: 4px 0;
+  }
+  .pulse{ animation: pulse 1.4s infinite ease-in-out; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.45;} }
+
+  .status-bar{ width:100%; display:flex; justify-content:space-between; gap:8px; }
+  .badge{
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding: 8px 10px; border-radius: 14px; font-family:'Fredoka', sans-serif; font-weight:600;
+  }
+  .badge.me{ background: var(--p1-soft); color:#9C2A2A;}
+  .badge.opp{ background: var(--p2-soft); color:#1B5A73;}
+  .badge .score{ font-size:1.3rem; }
+  .badge .lbl{ font-size:0.72rem; opacity:0.85; }
+
+  .round-pill{
+    font-family:'Fredoka', sans-serif; font-weight:600; font-size:0.82rem;
+    background: #EFE7D8; padding: 5px 14px; border-radius: 20px; color:#8b7f6a;
+  }
+
+  .category-card{
+    width:100%; text-align:center; background: var(--gold); border-radius:18px;
+    padding: 14px 16px; box-shadow: 0 4px 0 #D2AB00;
+  }
+  .category-card .k{ font-size:0.72rem; font-weight:700; letter-spacing:1px; color:#7a5c00; text-transform:uppercase; }
+  .category-card .v{ font-family:'Fredoka', sans-serif; font-weight:600; font-size:1.15rem; color:#4a3800; margin-top:2px; }
+
+  .chain{ display:flex; align-items:center; justify-content:center; gap:8px; width:100%; }
+  .word-tile{
+    background:white; border-radius:12px; padding:10px 16px; font-family:'Fredoka', sans-serif;
+    font-weight:600; font-size:1.15rem; box-shadow: 0 3px 0 rgba(49,42,43,0.15); border:2px solid #EFE7D8;
+  }
+  .arrow{ font-size:1.3rem; color:#c9bfae; }
+  .next-letter{
+    background: var(--p2); color:white; border-radius:12px; padding:10px 16px;
+    font-family:'Fredoka', sans-serif; font-weight:700; font-size:1.3rem; box-shadow: 0 3px 0 #1F5F79;
+  }
+
+  .turn-banner{
+    font-family:'Fredoka', sans-serif; font-weight:600; font-size:1.05rem;
+    padding: 10px 14px; border-radius:14px; width:100%; text-align:center;
+    background: var(--p1-soft); color:#9C2A2A;
+  }
+  .turn-banner.waiting{ background:#EDE9E2; color:#8b8189; }
+  .turn-banner.review{ background: var(--p2-soft); color:#1B5A73; }
+
+  .pending-word{
+    font-family:'Fredoka', sans-serif; font-weight:700; font-size:2rem; text-align:center;
+    color: var(--ink); margin: 6px 0;
+  }
+  .review-btns{ display:flex; gap:10px; width:100%; }
+
+  .error-text{ color:#B93D3D; font-weight:700; font-size:0.82rem; text-align:center; min-height:1.1em; }
+
+  .history{
+    width:100%; max-height:120px; overflow-y:auto; font-size:0.8rem; color:#8b8189;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .history .h-row{ display:flex; justify-content:space-between; gap:6px; }
+  .history .h-row.mine{ color:#9C2A2A; font-weight:700;}
+  .history .h-row.theirs{ color:#1B5A73; font-weight:700;}
+  .history .h-row.rejected{ text-decoration: line-through; opacity:0.6; }
+
+  .end-emoji{ font-size:3.2rem; }
+  .end-title{ font-size:1.6rem; text-align:center; }
+
+  .conn-note{ font-size:0.78rem; color:#8b8189; text-align:center; }
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="title">Woordendomino</div>
+  <div class="sub">Ketten van woorden, absurde categorieën, geen genade</div>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="card" style="display:flex; flex-direction:column; gap:12px;">
+    <button class="btn-primary" onclick="showCreate()">🎲 Nieuw spel starten</button>
+    <button class="btn-secondary" onclick="showJoin()">🔑 Meedoen met code</button>
+    <div class="error-text" id="home-error"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 8px 0; font-size:1.05rem;">Zo werkt het</h2>
+    <div class="rule-list">
+      Om de beurt typ je een woord dat begint met de <b>laatste letter</b> van het vorige woord. Elke ronde geldt een gekke <b>categorie-eis</b> (bijv. "klinkt vies maar is het niet"). Jouw tegenstander keurt je woord goed of af. Fout woord? <b>Strafpunt.</b> Na 10 ronden wint wie de minste strafpunten heeft.
+    </div>
+  </div>
+  <div class="conn-note">Verbinding loopt rechtstreeks tussen jullie telefoons (peer-to-peer), niet via Claude.</div>
+</div>
+
+<!-- CREATE -->
+<div id="screen-create" class="screen hidden">
+  <div class="card">
+    <h2 style="margin-top:0; text-align:center;">Kamer aangemaakt!</h2>
+    <div style="text-align:center; font-size:0.85rem; color:#8b8189;">Deel deze code met je tegenstander</div>
+    <div class="code-display" id="create-code">----</div>
+    <div class="turn-banner waiting pulse" id="create-status">Verbinding klaarzetten…</div>
+    <div class="error-text" id="create-error"></div>
+  </div>
+  <button class="btn-ghost" onclick="goHome()">← Terug</button>
+</div>
+
+<!-- JOIN -->
+<div id="screen-join" class="screen hidden">
+  <div class="card">
+    <h2 style="margin-top:0; text-align:center;">Vul de kamercode in</h2>
+    <input type="text" id="join-input" class="code-input" maxlength="4" placeholder="ABCD" autocomplete="off" autocapitalize="characters">
+    <button class="btn-secondary" onclick="attemptJoin()">Meedoen</button>
+    <div class="error-text" id="join-error"></div>
+  </div>
+  <button class="btn-ghost" onclick="goHome()">← Terug</button>
+</div>
+
+<!-- GAME -->
+<div id="screen-game" class="screen hidden">
+  <div class="status-bar">
+    <div class="badge me">
+      <div class="score" id="score-me">0</div>
+      <div class="lbl">JIJ · strafpunten</div>
+    </div>
+    <div class="badge opp">
+      <div class="score" id="score-opp">0</div>
+      <div class="lbl">TEGENSTANDER</div>
+    </div>
+  </div>
+
+  <div class="round-pill" id="round-pill">Ronde 1 / 10</div>
+
+  <div class="category-card">
+    <div class="k">Categorie</div>
+    <div class="v" id="category-text">—</div>
+  </div>
+
+  <div class="chain" id="chain-row"></div>
+
+  <div class="turn-banner" id="turn-banner">—</div>
+
+  <div id="submit-box" class="card hidden" style="display:flex; flex-direction:column; gap:8px;">
+    <input type="text" id="word-input" placeholder="Typ je woord…" autocomplete="off">
+    <div class="error-text" id="word-error"></div>
+    <button class="btn-primary" id="submit-btn" onclick="submitWord()">Versturen</button>
+    <button class="btn-reject" onclick="passTurn()">😩 Ik geef het op (strafpunt)</button>
+  </div>
+
+  <div id="review-box" class="card hidden" style="display:flex; flex-direction:column; gap:10px; align-items:center;">
+    <div style="font-size:0.85rem; color:#8b8189;">Tegenstander stuurde:</div>
+    <div class="pending-word" id="pending-word-text">—</div>
+    <div class="review-btns">
+      <button class="btn-secondary" onclick="reviewWord(true)">✅ Geldig</button>
+      <button class="btn-reject" onclick="reviewWord(false)">❌ Ongeldig</button>
+    </div>
+  </div>
+
+  <div class="history" id="history-box"></div>
+
+  <button class="btn-ghost" onclick="leaveGame()">Spel verlaten</button>
+</div>
+
+<!-- END -->
+<div id="screen-end" class="screen hidden">
+  <div class="card" style="align-items:center; display:flex; flex-direction:column; gap:10px;">
+    <div class="end-emoji" id="end-emoji">🏆</div>
+    <div class="end-title display" id="end-title">Je wint!</div>
+    <div id="end-sub" style="color:#8b8189; font-weight:600; text-align:center;"></div>
+  </div>
+  <button class="btn-primary" onclick="goHome()">Opnieuw spelen</button>
+</div>
+
+<script>
+const CATEGORIES = [
+  "Iets dat je niet kunt optillen",
+  "Klinkt vies, maar is het niet",
+  "Iets wat je oma zou kunnen zeggen",
+  "Zou een goede bandnaam zijn",
+  "Iets waar je van moet giechelen",
+  "Klinkt Frans, maar is het niet",
+  "Iets dat je niet in een lift wilt tegenkomen",
+  "Zou een slechte superheldennaam zijn",
+  "Iets dat te groot is voor een rugzak",
+  "Klinkt eng, maar is eigenlijk schattig"
+];
+const TOTAL_ROUNDS = CATEGORIES.length;
+const ROOM_PREFIX = 'wdom5-';
+
+let myRole = null;      // 1 = host, 2 = guest
+let roomCode = null;
+let peer = null;
+let conn = null;
+let state = null;
+
+function screen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function teardownConnection(){
+  try{ if(conn) conn.close(); }catch(e){}
+  try{ if(peer) peer.destroy(); }catch(e){}
+  conn = null; peer = null;
+}
+
+function goHome(){
+  teardownConnection();
+  myRole = null; roomCode = null; state = null;
+  document.getElementById('home-error').textContent = '';
+  document.getElementById('join-error').textContent = '';
+  document.getElementById('create-error').textContent = '';
+  document.getElementById('join-input').value = '';
+  screen('screen-home');
+}
+
+function randomCode(){
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for(let i=0;i<4;i++) out += letters[Math.floor(Math.random()*letters.length)];
+  return out;
+}
+
+function freshState(){
+  return {
+    version: 0,
+    turnsTaken: 0,
+    turn: 1,
+    lastWord: null,
+    pending: null,
+    scores: { 1:0, 2:0 },
+    history: [],
+    winner: null
+  };
+}
+
+function otherPlayer(p){ return p === 1 ? 2 : 1; }
+
+/* ---------------- HOST ---------------- */
+function showCreate(attemptsLeft){
+  attemptsLeft = attemptsLeft === undefined ? 3 : attemptsLeft;
+  const homeErr = document.getElementById('home-error');
+  homeErr.textContent = '';
+
+  if(typeof Peer === 'undefined'){
+    homeErr.textContent = 'Kon de verbindingsbibliotheek niet laden. Controleer je internetverbinding.';
+    return;
+  }
+
+  teardownConnection();
+  const code = randomCode();
+  roomCode = code; myRole = 1;
+  document.getElementById('create-code').textContent = code;
+  document.getElementById('create-status').textContent = 'Verbinding klaarzetten…';
+  document.getElementById('create-status').classList.add('pulse');
+  document.getElementById('create-error').textContent = '';
+  screen('screen-create');
+
+  peer = new Peer(ROOM_PREFIX + code, { debug: 0 });
+
+  peer.on('open', function(){
+    document.getElementById('create-status').textContent = 'Wachten tot speler 2 meedoet…';
+  });
+
+  peer.on('connection', function(c){
+    conn = c;
+    conn.on('open', function(){
+      state = freshState();
+      conn.send({ type:'init', state: state });
+      screen('screen-game');
+      renderGame(state);
+    });
+    conn.on('data', handleIncoming);
+    conn.on('close', handleDisconnect);
+  });
+
+  peer.on('error', function(err){
+    if(err.type === 'unavailable-id' && attemptsLeft > 0){
+      showCreate(attemptsLeft - 1);
+      return;
+    }
+    document.getElementById('create-error').textContent =
+      'Verbindingsfout (' + err.type + '). Controleer je internetverbinding en probeer opnieuw.';
+  });
+}
+
+/* ---------------- GUEST ---------------- */
+function showJoin(){
+  document.getElementById('join-error').textContent = '';
+  screen('screen-join');
+}
+
+function attemptJoin(){
+  const input = document.getElementById('join-input');
+  const code = input.value.trim().toUpperCase();
+  const errEl = document.getElementById('join-error');
+  errEl.textContent = '';
+  if(code.length !== 4){ errEl.textContent = 'Voer een code van 4 tekens in.'; return; }
+
+  if(typeof Peer === 'undefined'){
+    errEl.textContent = 'Kon de verbindingsbibliotheek niet laden. Controleer je internetverbinding.';
+    return;
+  }
+
+  teardownConnection();
+  roomCode = code; myRole = 2;
+  errEl.textContent = 'Verbinden…';
+
+  peer = new Peer({ debug: 0 });
+
+  peer.on('open', function(){
+    conn = peer.connect(ROOM_PREFIX + code, { reliable: true });
+
+    conn.on('open', function(){
+      errEl.textContent = '';
+      screen('screen-game');
+    });
+    conn.on('data', handleIncoming);
+    conn.on('close', handleDisconnect);
+    conn.on('error', function(e){
+      errEl.textContent = 'Verbindingsfout: ' + (e && e.type ? e.type : e);
+    });
+  });
+
+  peer.on('error', function(err){
+    if(err.type === 'peer-unavailable'){
+      errEl.textContent = 'Kamer niet gevonden. Controleer de code (en of speler 1 al gestart is).';
+    } else {
+      errEl.textContent = 'Verbindingsfout (' + err.type + '). Controleer je internetverbinding.';
+    }
+  });
+}
+
+/* ---------------- SYNC ---------------- */
+function handleIncoming(msg){
+  if(!msg || !msg.type) return;
+  if(msg.type === 'init' || msg.type === 'state'){
+    state = msg.state;
+    if(state.winner){ renderEnd(state); } else { renderGame(state); }
+  }
+}
+
+function pushState(){
+  state.version = (state.version || 0) + 1;
+  if(conn && conn.open){ conn.send({ type:'state', state: state }); }
+}
+
+function handleDisconnect(){
+  const banner = document.getElementById('turn-banner');
+  if(banner && !document.getElementById('screen-game').classList.contains('hidden')){
+    banner.textContent = '⚠️ Verbinding met tegenstander verbroken.';
+    banner.className = 'turn-banner waiting';
+  }
+}
+
+/* ---------------- GAME LOGIC ---------------- */
+function currentCategory(s){
+  const idx = Math.min(Math.floor(s.turnsTaken / 2), TOTAL_ROUNDS - 1);
+  return CATEGORIES[idx];
+}
+function currentRound(s){
+  return Math.min(Math.floor(s.turnsTaken / 2) + 1, TOTAL_ROUNDS);
+}
+function lastLetterOf(word){
+  const trimmed = word.trim();
+  return trimmed.charAt(trimmed.length - 1);
+}
+
+function renderGame(s){
+  document.getElementById('score-me').textContent = s.scores[myRole];
+  document.getElementById('score-opp').textContent = s.scores[otherPlayer(myRole)];
+  document.getElementById('round-pill').textContent = `Ronde ${currentRound(s)} / ${TOTAL_ROUNDS}`;
+  document.getElementById('category-text').textContent = currentCategory(s);
+
+  const chain = document.getElementById('chain-row');
+  chain.innerHTML = '';
+  if(s.lastWord){
+    const t = document.createElement('div');
+    t.className = 'word-tile';
+    t.textContent = s.lastWord;
+    chain.appendChild(t);
+    const arrow = document.createElement('div');
+    arrow.className = 'arrow';
+    arrow.textContent = '→';
+    chain.appendChild(arrow);
+    const letter = document.createElement('div');
+    letter.className = 'next-letter';
+    letter.textContent = lastLetterOf(s.lastWord).toUpperCase() + ' …';
+    chain.appendChild(letter);
+  } else {
+    const t = document.createElement('div');
+    t.className = 'word-tile';
+    t.textContent = 'Kies zelf een startwoord!';
+    chain.appendChild(t);
+  }
+
+  const banner = document.getElementById('turn-banner');
+  const submitBox = document.getElementById('submit-box');
+  const reviewBox = document.getElementById('review-box');
+  submitBox.classList.add('hidden');
+  reviewBox.classList.add('hidden');
+  banner.className = 'turn-banner';
+
+  if(s.pending){
+    if(s.pending.player === myRole){
+      banner.textContent = 'Wachten tot tegenstander jouw woord beoordeelt…';
+      banner.classList.add('waiting');
+    } else {
+      banner.textContent = '🔎 Beoordeel het woord van je tegenstander';
+      banner.classList.add('review');
+      reviewBox.classList.remove('hidden');
+      document.getElementById('pending-word-text').textContent = s.pending.word;
+    }
+  } else if(s.turn === myRole){
+    banner.textContent = '✏️ Jouw beurt — typ je woord';
+    submitBox.classList.remove('hidden');
+    document.getElementById('word-error').textContent = '';
+  } else {
+    banner.textContent = 'Wachten op tegenstander…';
+    banner.classList.add('waiting');
+  }
+
+  const hist = document.getElementById('history-box');
+  hist.innerHTML = '';
+  [...s.history].reverse().forEach(h => {
+    const row = document.createElement('div');
+    row.className = 'h-row ' + (h.player === myRole ? 'mine' : 'theirs') + (h.verdict === 'rejected' || h.type === 'pass' ? ' rejected' : '');
+    const label = h.type === 'pass' ? '(paste)' : (h.verdict === 'rejected' ? h.word + ' (afgekeurd)' : h.word);
+    row.innerHTML = `<span>${label}</span><span>${h.category}</span>`;
+    hist.appendChild(row);
+  });
+}
+
+function submitWord(){
+  const input = document.getElementById('word-input');
+  const errEl = document.getElementById('word-error');
+  const word = input.value.trim();
+  errEl.textContent = '';
+  if(!state || state.turn !== myRole || state.pending) return;
+  if(!word || word.length < 2){ errEl.textContent = 'Voer een echt woord in.'; return; }
+
+  if(state.lastWord){
+    const needed = lastLetterOf(state.lastWord).toLowerCase();
+    if(word.charAt(0).toLowerCase() !== needed){
+      errEl.textContent = `Je woord moet beginnen met "${needed.toUpperCase()}".`;
+      return;
+    }
+  }
+
+  state.pending = { player: myRole, word };
+  pushState();
+  renderGame(state);
+  input.value = '';
+}
+
+function reviewWord(approved){
+  if(!state || !state.pending || state.pending.player === myRole) return;
+  const category = currentCategory(state);
+  const submitter = state.pending.player;
+
+  if(approved){
+    state.history.push({ player: submitter, word: state.pending.word, category, verdict:'approved', type:'word' });
+    state.lastWord = state.pending.word;
+  } else {
+    state.history.push({ player: submitter, word: state.pending.word, category, verdict:'rejected', type:'word' });
+    state.scores[submitter] += 1;
+  }
+  state.pending = null;
+  state.turnsTaken += 1;
+  state.turn = myRole; // reviewer becomes next submitter
+
+  if(state.turnsTaken >= TOTAL_ROUNDS * 2){
+    finishGame(state);
+  }
+
+  pushState();
+  if(state.winner){ renderEnd(state); } else { renderGame(state); }
+}
+
+function passTurn(){
+  if(!state || state.turn !== myRole || state.pending) return;
+  const category = currentCategory(state);
+  state.history.push({ player: myRole, word: '', category, type:'pass' });
+  state.scores[myRole] += 1;
+  state.turnsTaken += 1;
+  state.turn = otherPlayer(myRole);
+
+  if(state.turnsTaken >= TOTAL_ROUNDS * 2){
+    finishGame(state);
+  }
+
+  pushState();
+  if(state.winner){ renderEnd(state); } else { renderGame(state); }
+}
+
+function finishGame(s){
+  if(s.scores[1] < s.scores[2]) s.winner = 1;
+  else if(s.scores[2] < s.scores[1]) s.winner = 2;
+  else s.winner = 'draw';
+}
+
+function renderEnd(s){
+  screen('screen-end');
+  const emoji = document.getElementById('end-emoji');
+  const title = document.getElementById('end-title');
+  const sub = document.getElementById('end-sub');
+  if(s.winner === 'draw'){
+    emoji.textContent = '🤝';
+    title.textContent = 'Gelijkspel!';
+    sub.textContent = `Allebei ${s.scores[myRole]} strafpunten. Knap gewoordendomino'd.`;
+  } else {
+    const iWon = s.winner === myRole;
+    emoji.textContent = iWon ? '🏆' : '💫';
+    title.textContent = iWon ? 'Jij wint!' : 'Tegenstander wint!';
+    sub.textContent = `Eindstand: jij ${s.scores[myRole]} — tegenstander ${s.scores[otherPlayer(myRole)]} strafpunten.`;
+  }
+}
+
+function leaveGame(){ goHome(); }
+
+document.getElementById('join-input').addEventListener('input', (e)=>{
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+document.getElementById('word-input').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') submitWord();
+});
+</script>
+</body>
+</html>
